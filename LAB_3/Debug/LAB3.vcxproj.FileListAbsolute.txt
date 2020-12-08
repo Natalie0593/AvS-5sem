@@ -1,0 +1,4 @@
+D:\AVS\LAB3\Debug\LAB_3.exe
+D:\AVS\LAB3\Debug\LAB_3.pdb
+D:\AVS\LAB_3\Debug\LAB_3.exe
+D:\AVS\LAB_3\Debug\LAB_3.pdb

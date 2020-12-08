@@ -1,0 +1,2 @@
+D:\AVS\LAB 2\2.1\Debug\2.1.exe
+D:\AVS\LAB 2\2.1\Debug\2.1.pdb

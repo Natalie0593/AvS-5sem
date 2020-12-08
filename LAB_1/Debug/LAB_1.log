@@ -1,0 +1,7 @@
+﻿  Source.cpp
+D:\AVS\LAB_1\Source.cpp(87,15): warning C4838: Преобразование из "int" в "char" требует сужающего преобразования.
+D:\AVS\LAB_1\Source.cpp(87,15): warning C4309: инициализация: усечение константного значения
+D:\AVS\LAB_1\Source.cpp(88,15): warning C4838: Преобразование из "int" в "char" требует сужающего преобразования.
+D:\AVS\LAB_1\Source.cpp(88,15): warning C4309: инициализация: усечение константного значения
+D:\AVS\LAB_1\Source.cpp(84): warning C4799: функция "fun_asm" не имеет инструкции EMMS
+  LAB_1.vcxproj -> D:\AVS\LAB_1\Debug\LAB_1.exe
