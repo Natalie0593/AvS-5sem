@@ -1,41 +1,33 @@
 #include <iostream>
-#include <queue>
-#include <mutex>
 #include <thread>
+#include <queue>
+using namespace std;
 
 
 class DynamicQueue {
 private:
-	std::queue<uint8_t> queue;
-	std::mutex mutex;
+	std::queue<uint8_t> data;
+	std::mutex qmutex;
 
 public:
-	void push(uint8_t value);
-	bool pop(uint8_t& value);
-};
 
-void DynamicQueue::push(uint8_t value) {
-	std::lock_guard<std::mutex> lock(mutex);
-
-	queue.push(value);
-}
-
-bool DynamicQueue::pop(uint8_t& value) {
-	mutex.lock();
-	if (queue.empty()) {
-		mutex.unlock();
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
-		mutex.lock();
-		if (queue.empty()) {
-			mutex.unlock();
-			return false;
+	void push(uint8_t val) {
+		std::lock_guard<std::mutex> lock(qmutex);
+		data.push(val);
+	}
+	bool pop(uint8_t& val) {
+		unique_lock<mutex> ulock(qmutex);
+		if (data.empty()) {
+			ulock.unlock();
+			this_thread::sleep_for(milliseconds(1));
+			ulock.lock();
+			if (data.empty()) {
+				return false;
+			}
 		}
+		val = data.front();
+		data.pop();
+		return true;
 	}
 
-	value = queue.front();
-	queue.pop();
-	mutex.unlock();
-	return true;
-}
-
-
+};

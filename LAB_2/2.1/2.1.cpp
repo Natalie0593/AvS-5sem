@@ -1,145 +1,85 @@
 ﻿#include <iostream>
 #include <thread>
+#include <chrono>
+#include <algorithm>
 #include <mutex>
+#include <vector>
 #include <atomic>
+#include <array>
+#include "windows.h"
 
 using namespace std;
+using namespace std::chrono;
 
-typedef int8_t byte;
-int arrSize = 1024 * 1024;
-atomic<int> counterAtomic = 0;
-int counterMutex = 0;
-mutex mtx;
+static const int NumThreads = 32;
+static const int NumTasks = 4000 * 4000;
 
-void Print(int NumThreads, long long duration)
-{
-	cout << "Кол-во потоков: " << NumThreads << ", Время: " << duration << "\n";
+std::array<int, NumTasks> A;
+
+int mutex_addr = 0;
+atomic<int> atomic_addr{ 0 };
+mutex _lock;
+
+int funcMutex() {
+	int index;
+	lock_guard<mutex> lock(_lock);
+	index = mutex_addr++;
+	return index;
 }
 
-void Atomic(byte* array)
-{
-	int counter = 0;
-	while (true)
-	{
-		counter = counterAtomic++;
-		if (counter < arrSize)
-			array[counter]++;
-		else
-			return;
-	}
-}
-
-void AtomicSleep(byte* array)
-{
-	int counter = 0;
-	while (true)
-	{
-		counter = counterAtomic++;
-		if (counter < arrSize)
+void OneAddr(int plan) {
+	int local_ind = 0;
+	while (true) {
+		if (plan ==  1) {
+			local_ind = atomic_addr++;
+		}
+		else if(plan == 2)
 		{
-			array[counter]++;
+			local_ind = funcMutex();
+		}
+		else if (plan == 3) {
+			local_ind = atomic_addr++;
 			this_thread::sleep_for(chrono::nanoseconds(10));
 		}
-		else
-			return;
-	}
-}
-
-void Mutex(byte* array)
-{
-	int counter = 0;
-	while (true)
-	{
-		mtx.lock();
-		counter = counterMutex++;
-		mtx.unlock();
-		if (counter < arrSize)
-			array[counter]++;
-		else
-			break;
-	}
-}
-
-void MutexSleep(byte* array)
-{
-	int counter = 0;
-	while (true)
-	{
-		mtx.lock();
-		counter = counterMutex++;
-		mtx.unlock();
-		if (counter < arrSize)
-		{
-			array[counter]++;
+		else {
+			local_ind = funcMutex();
 			this_thread::sleep_for(chrono::nanoseconds(10));
 		}
-		else
+		if (local_ind >= NumTasks) 
 			break;
+		A[local_ind]++;
 	}
 }
 
-byte CompareSTD(byte* array, unsigned int NumThreads)
-{
-	thread* threadArray = new thread[NumThreads];
-
-	chrono::high_resolution_clock::time_point start = chrono::high_resolution_clock::now();
-	cout << "Mutex:\n";
-	for (int i = 0; i < NumThreads; i++)
-	{
-		threadArray[i] = thread(Mutex, array);
-		threadArray[i].join();
-	}
-	chrono::high_resolution_clock::time_point finish = chrono::high_resolution_clock::now();
-	Print(NumThreads, chrono::duration_cast<chrono::milliseconds>(finish - start).count());
-	counterAtomic = 0;
-	counterMutex = 0;
-
-	cout << "Atomic:" << endl;
-	start = chrono::high_resolution_clock::now();
-	for (int i = 0; i < NumThreads; i++)
-	{
-
-		threadArray[i] = thread(Atomic, array);
-		threadArray[i].join();
-	}
-	finish = chrono::high_resolution_clock::now();
-	Print(NumThreads, chrono::duration_cast<chrono::milliseconds>(finish - start).count());
-	counterAtomic = 0;
-	counterMutex = 0;
-
-	cout << "Mutex Sleep:" << endl;
-	start = chrono::high_resolution_clock::now();
-	for (int i = 0; i < NumThreads; i++)
-	{
-		threadArray[i] = thread(MutexSleep, array);
-		threadArray[i].join();
-	}
-	finish = chrono::high_resolution_clock::now();
-	Print(NumThreads, chrono::duration_cast<chrono::milliseconds>(finish - start).count());
-	counterAtomic = 0;
-	counterMutex = 0;
-
-	cout << "Atomic Sleep:" << endl;
-	start = chrono::high_resolution_clock::now();
-	for (int i = 0; i < NumThreads; i++)
-	{
-
-		threadArray[i] = thread(AtomicSleep, array);
-		threadArray[i].join();
-	}
-	finish = chrono::high_resolution_clock::now();
-	Print(NumThreads, chrono::duration_cast<chrono::milliseconds>(finish - start).count());
-	counterAtomic = 0;
-	counterMutex = 0;
-	return *array;
-}
 
 int main()
 {
-	setlocale(LC_ALL, "RUSSIAN");
-	int NumTreads[] = { 4, 8, 16, 32 };
-	byte* array = new byte[arrSize];
+	int q;
 
-	for (int i = 0; i < 4; i++)
-		CompareSTD(array, NumTreads[i]);
+		cout << "1 - amomic\n2 - mutex\n3 - atomic sleep\n4 - mutex sleep";
+		cin >> q;
+		for (int i = 0; i < NumTasks; i++)
+			A[i] = 0;
+
+		auto startTime = high_resolution_clock::now();
+		thread mythread[NumThreads];
+
+		for (int i = 0; i < NumThreads; i++)
+		{
+			mythread[i] = thread(OneAddr, q);
+		}
+
+		for (int i = 0; i < NumThreads; i++)
+		{
+			mythread[i].join();
+		}
+
+		auto stopTime = high_resolution_clock::now();
+		auto elapsed = duration_cast<nanoseconds>(stopTime - startTime);
+
+
+		cout << "Sec: " << elapsed.count() * 1e-9 << endl;
+	
+
+	return 0;
 }

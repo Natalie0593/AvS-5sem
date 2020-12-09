@@ -1,60 +1,42 @@
-#include <iostream>
-#include <thread>
-#include <vector>
-#include <atomic>
-#include "FixedMutexQueue.h"
-#include <ctime>
 #include "DynamicQueue.h"
+#include "FixedMutexQueue.h"
 
-const std::vector<int> producerNums = { 1, 2, 4 };
-const std::vector<int> consumerNums = { 1, 2, 4 };
-const std::vector<size_t> queueSizes = { 1,4,16 };
-const int TASK_NUM = 1024;
+using namespace std;
+using namespace std::chrono;
 
-void task2() {
-	int taskNum = TASK_NUM;
-	for (auto queueSize : queueSizes) {
-		for (int producerNum : producerNums) {
-			for (int consumerNum : consumerNums) {
+static const int TaskNum = 4 * 1024 * 1024;
+static const int ProducerNum = 4;
+static const int ConsumerNum = 4;
 
-				DynamicQueue queue;
-				//FixedMutexQueue queue(queueSize);
-				std::atomic_int sum(0);
+int globalSum = 0;
+atomic<int> counter{ 0 };
 
-				std::vector<std::thread> consumers(consumerNum);
-				std::vector<std::thread> producers(producerNum);
-				auto start = clock();
-				for (auto& thread : consumers) {
-					thread = std::thread(
-						[&sum, &queue, taskNum, producerNum]() {
-							uint8_t val;
-							while (sum.load() < producerNum * taskNum) {
-								sum += queue.pop(val);
-							}
-						}
-					);
-				}
-				for (auto& thread : producers) {
-					thread = std::thread(
-						[&taskNum, &queue]() {
-							for (int i = 0; i < taskNum; ++i)
-								queue.push(1);
-						}
-					);
-				}
-				for (auto& thread : producers) {
-					thread.join();
-				}
 
-				for (auto& thread : consumers) {
-					thread.join();
-				}
-				auto time = clock() - start;
-				std::cout << "producerNum: " << producerNum << ", consumerNum: " << consumerNum << ", queueSize : " << queueSize << "\n"
-					<< sum.load() << ", time: " << time << " ms";
-				std::cout << std::endl;
-			}
-		}
+static FixedSizeQueue staticQueue;
 
+static DynamicQueue dynamicQueue;
+
+template <class T>
+void producer(T& queue) {
+	for (int i = 0; i < TaskNum / ConsumerNum; i++) {
+		queue.push(1);
 	}
 }
+
+template <class T>
+void consumer(T& queue) {
+	int localSum = 0;
+	uint8_t elem;
+	int local_counter = 0;
+	while (true) {
+		local_counter = counter;
+		if (local_counter >= TaskNum)
+			break;
+		if (queue.pop(elem)) {
+			localSum += elem;
+			local_counter = counter++;
+		}
+	}
+	globalSum += localSum;
+}
+
